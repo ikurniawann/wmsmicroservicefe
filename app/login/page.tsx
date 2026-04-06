@@ -20,6 +20,19 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
+    // Basic validation
+    if (!username.trim()) {
+      setError("Username wajib diisi");
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 1) {
+      setError("Password wajib diisi");
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/v1/auth/login", {
         method: "POST",
@@ -29,10 +42,18 @@ export default function LoginPage() {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await response.json();
+      let data;
+      const contentType = response.headers.get("content-type");
+      
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(`Server error: ${text.substring(0, 100)}`);
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || "Login failed");
+        throw new Error(data.error || data.message || "Login failed");
       }
 
       // Store auth data
@@ -41,15 +62,16 @@ export default function LoginPage() {
       // Redirect to dashboard
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      console.error("Login error:", err);
+      setError(err.message || "Terjadi kesalahan saat login");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-2xl">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900">
             WMS Login
@@ -59,22 +81,22 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6" noValidate>
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               {error}
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="username">Username atau Email</Label>
+            <Label htmlFor="username">Username</Label>
             <Input
               id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="admin"
-              required
+              autoComplete="username"
             />
           </div>
 
@@ -86,7 +108,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              required
+              autoComplete="current-password"
             />
           </div>
 
@@ -98,9 +120,10 @@ export default function LoginPage() {
             {loading ? "Loading..." : "Sign In"}
           </Button>
 
-          <div className="text-center text-sm text-gray-600 mt-4">
-            <p>Demo credentials:</p>
-            <p>Username: admin | Password: admin123</p>
+          <div className="text-center text-sm text-gray-500 mt-4 p-3 bg-gray-50 rounded-lg">
+            <p className="font-medium">Demo credentials:</p>
+            <p>Username: <span className="font-mono">admin</span></p>
+            <p>Password: <span className="font-mono">admin123</span></p>
           </div>
         </form>
       </div>
